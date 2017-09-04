@@ -1,0 +1,38 @@
+{
+  "name": "wremoterequire",
+  "version": "0.0.0",
+  "description": " ",
+  "author": "Kostiantyn Wandalen <wtory.net@domainsbyproxy.com>",
+  "license": "MIT",
+  "main": "staging/amid/remoteRequire/Client.s",
+  "files": [
+    "staging/amid",
+    "production"
+  ],
+  "scripts": {
+    "test": "wtest staging",
+    "make_doc": "./doc.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wandalen/wRemoteRequire.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Wandalen/wRemoteRequire/issues"
+  },
+  "dependencies": {
+    "wTools": "",
+    "wCopyable": "",
+    "wProto": "",
+    "wFiles": "",
+    "express": "",
+    "get-port": "",
+    "resolve": ""
+  },
+  "devDependencies": {
+    "wTesting": ""
+  },
+  "keywords": [
+    "wRemoteRequire"
+  ]
+}
