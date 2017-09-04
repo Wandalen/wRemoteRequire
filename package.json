@@ -3,6 +3,16 @@
   "version": "0.0.0",
   "description": " ",
   "author": "Kostiantyn Wandalen <wtory.net@domainsbyproxy.com>",
+  "contributors": [
+    {
+      "name": "Kostiantyn Wandalen",
+      "email": "wtory.net@domainsbyproxy.com>"
+    },
+    {
+      "name": "Volodymyr M.",
+      "email": "volodymyr.migdal@gmail.com"
+    }
+  ],
   "license": "MIT",
   "main": "staging/amid/remoteRequire/Server.s",
   "files": [
