@@ -49,7 +49,7 @@
 
     var self = this;
 
-    console.log( 'require : ', src )
+    // console.log( 'require : ', src )
 
     if( !self.currentPath )
     {

@@ -150,6 +150,7 @@
 
       var filePath = _.urlParse( data.from ).pathname;
 
+      if( self.verbosity > 1 )
       console.log( 'data : ', data  )
 
       var resolved = null;
@@ -166,8 +167,11 @@
 
       var baseDir = _.pathDir( filePath );
 
-      console.log( 'baseDir', baseDir )
-      console.log( 'filePath', filePath )
+      if( self.verbosity > 1 )
+      {
+        console.log( 'baseDir', baseDir )
+        console.log( 'filePath', filePath )
+      }
 
       if( !resolved )
       resolved = _.pathResolve( baseDir, data.file );
@@ -193,6 +197,7 @@
       }
       else
       {
+        if( self.verbosity > 1 )
         console.log( 'resolve failded for : ', data.file, baseDir )
         res.send( { file : '', path : null } );
       }
