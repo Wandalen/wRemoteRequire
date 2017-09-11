@@ -44,6 +44,15 @@
 
     if( !self.con )
     self.con = new wConsequence().give();
+
+    if( !self.files )
+    self.files = {};
+    if( !self.records )
+    self.records = {};
+    if( !self.requests )
+    self.requests = [];
+
+    _.assert( self.rootDir, 'rootDir is required' );
   }
 
   //
@@ -142,39 +151,50 @@
         _.errLog( err );
       }
 
-      if( !_.objectIs( data ) )
-      return res.send();
+      self.requests.push( data );
 
-      if( data.from === undefined || data.file === undefined )
-      return res.send();
-
-      var filePath = _.urlParse( data.from ).pathname;
+      if( !_.objectIs( data ) || data.require === undefined )
+      {
+        res.send({ fail : 1 });
+      }
 
       if( self.verbosity > 1 )
       console.log( 'data : ', data  )
 
+      var baseDir;
+      var filePath;
+
+      if( self.files[ data.token ] )
+      {
+        var pathByToken = self.files[ data.token ].filePath;
+        filePath = self.records[ pathByToken ].absolute;
+        baseDir = _.pathDir( filePath );
+      }
+      else
+      {
+        baseDir = self.rootDir;
+      }
+
       var resolved = null;
 
-      if( _.strBegins( filePath, '/static' ) )
-      {
-        filePath = _.pathJoin( statics, _.strRemoveBegin( filePath, '/static/' ) );
-      }
+      // if( _.strBegins( filePath, '/static' ) )
+      // {
+      //   filePath = _.pathJoin( statics, _.strRemoveBegin( filePath, '/static/' ) );
+      // }
 
-      if( _.strBegins( filePath, '/modules' ) )
-      {
-        filePath = _.pathJoin( modules, _.strRemoveBegin( filePath, '/modules/' ) );
-      }
-
-      var baseDir = _.pathDir( filePath );
+      // if( _.strBegins( filePath, '/modules' ) )
+      // {
+      //   filePath = _.pathJoin( modules, _.strRemoveBegin( filePath, '/modules/' ) );
+      // }
 
       if( self.verbosity > 1 )
       {
-        console.log( 'baseDir', baseDir )
-        console.log( 'filePath', filePath )
+        console.log( 'baseDir', baseDir );
+        console.log( 'filePath', filePath );
       }
 
       if( !resolved )
-      resolved = _.pathResolve( baseDir, data.file );
+      resolved = _.pathResolve( _.pathJoin( baseDir, data.require ) );
 
       if( !_.fileProvider.fileStat( resolved ) )
       {
@@ -182,7 +202,7 @@
 
         try
         {
-          resolved = resolve.sync( data.file, { basedir: baseDir });
+          resolved = resolve.sync( data.require, { basedir: baseDir });
         }
         catch( err )
         {
@@ -192,14 +212,23 @@
 
       if( resolved && _.fileProvider.fileStat( resolved ) )
       {
-        var response = { file : _.fileProvider.fileRead( resolved ), path : resolved };
-        res.send( JSON.stringify( response ) );
+        if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
+        throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
+
+        if( self.verbosity > 1 )
+        console.log( 'resolved for : ', data.require );
+
+        var info = self.addFile( resolved );
+        info.code = _.fileProvider.fileRead( resolved );
+
+        res.send( JSON.stringify( info ) );
       }
       else
       {
         if( self.verbosity > 1 )
-        console.log( 'resolve failded for : ', data.file, baseDir )
-        res.send( { file : '', path : null } );
+        console.log( 'resolve failded for : ', data.require, baseDir );
+
+        res.send({ fail : 1 });
       }
     })
   }
@@ -225,6 +254,29 @@
     return con;
   }
 
+  //
+
+  function addFile( filePath )
+  {
+    var self = this;
+
+    var token = _.idGenerateDate();
+
+    if( !self.rootDir )
+    self.rootDir = _.pathDir( filePath );
+
+    var o = { fileProvider :  _.fileProvider };
+    var recordOptions = _.FileRecordOptions( o, { dir : rootDir } );
+
+    var record = _.fileProvider.fileRecord( filePath, recordOptions );
+    self.records[ record.absolute ] = record;
+    self.files[ token ] =
+    {
+      filePath : record.absolute,
+    }
+    return { token : token, filePath : record.relative };
+  }
+
   // --
   // relationship
   // --
@@ -234,14 +286,18 @@
     server : null,
     app : null,
     serverPort : null,
-    verbosity : 1
+    verbosity : 1,
+    rootDir : null,
   }
 
   var Restricts =
   {
     resolve : null,
     serverIsRunning : false,
-    con : null
+    con : null,
+    files : null,
+    records : null,
+    requests : null
   }
 
   var Statics =
@@ -262,6 +318,8 @@
     _start : _start,
     _resolve : _resolve,
     _getPort : _getPort,
+
+    addFile : addFile,
 
     // relationships
 

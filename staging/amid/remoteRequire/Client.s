@@ -34,80 +34,47 @@
 
     self._requestUrl = _.urlJoin( self.remoteAdress, 'require' );
 
-    if( !self.map )
-    self.map = {};
-
-    if( !self.queue )
-    self.queue = [ null ];
   }
 
   //
 
   function require( src )
   {
-    var res;
-
     var self = this;
 
-    // console.log( 'require : ', src )
+    if( self.verbosity >= 1 )
+    console.log( 'require : ', src, 'filePath : ', self.filePath, 'token: ', self.token );
 
-    if( !self.currentPath )
+    var requestData =
     {
-      var scripts = document.getElementsByTagName( "script" );
-      var script =  scripts[ scripts.length - 1 ];
-      var from = script.src || _.strRemoveBegin( script.baseURI, 'file://' );
+      token : self.token,
+      require : src
     }
-    else
-    var from = self.currentPath;
 
-    if( self.map[ src ] )
+    var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
+    var responseData = _.fileProvider.fileRead({ filePath : 'require', advanced : advanced });
+    var response = JSON.parse( responseData );
+    if( !response.fail )
     {
-      self.queue.push( self.currentPath );
-      self.currentPath = self.map[ src ].realPath;
-
+      var require = RemoteRequire.requireMake( response );
       try
       {
-        res = self.map[ src ].module();
+        require();
       }
-      catch(err)
+      catch( err )
       {
+        _.errLog( err );
       }
-
-      self.currentPath = self.queue.pop();
-
-      return res;
     }
 
-    var obj = { from : from, file : src };
-    var advanced  = { method : 'POST', send : JSON.stringify( obj ) };
-    var response = _.fileProvider.fileRead({ filePath : 'require', advanced : advanced });
-    response = JSON.parse( response );
-    if( response.path )
-    {
-      var _module = _.routineMake({ code : response.file, prependingReturn : 0, usingStrict : 0 } );
-      self.map[ src ] = { module : _module, realPath : response.path };
-      self.queue.push( self.currentPath );
-      self.currentPath = self.map[ src ].realPath;
-      try
-      {
-        res = self.map[ src ].module();
-      }
-      catch(err)
-      {
-      }
+  }
 
-      self.currentPath = self.queue.pop();
-    }
-    else
-    {
-      self.map[ src ] =
-      {
-         module : () => {},
-         realPath : null
-      };
-    }
-
-    return res;
+  function requireMake( o )
+  {
+    var self = this;
+    var _require = _.routineJoin({ filePath : o.filePath, token : o.token }, self.require );
+    var require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require }, usingStrict : 0 });
+    return require;
   }
 
   // --
@@ -117,15 +84,12 @@
   var Composes =
   {
     remoteAdress : null,
-    currentPath : null,
-    queue : null,
-    map : null,
-    _requestUrl : null
+    verbosity : 1
   }
 
   var Restricts =
   {
-
+    _requestUrl : null,
   }
 
   var Statics =
@@ -142,6 +106,7 @@
     init : init,
 
     require : require,
+    requireMake : requireMake,
 
     // relationships
 
