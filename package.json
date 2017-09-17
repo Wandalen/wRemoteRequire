@@ -14,9 +14,9 @@
     }
   ],
   "license": "MIT",
-  "main": "staging/amid/remoteRequire/Server.s",
+  "main": "staging/dwtools/amid/remoteRequire/Server.s",
   "files": [
-    "staging/amid",
+    "staging/dwtools/amid",
     "production"
   ],
   "scripts": {
@@ -40,7 +40,8 @@
     "resolve": ""
   },
   "devDependencies": {
-    "wTesting": ""
+    "wTesting": "",
+    "wremoterequire": "."
   },
   "keywords": [
     "wRemoteRequire"

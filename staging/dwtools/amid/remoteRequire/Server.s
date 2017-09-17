@@ -15,7 +15,7 @@
   var Parent = null;
   var pathNativize = _.fileProvider.pathNativize;
   var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
-  var statics = pathNativize( _.pathJoin( rootDir, 'staging/amid/launcher/static' ) );
+  var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
   var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
   var resolve = require( 'resolve' );
 
