@@ -7,6 +7,7 @@
     require( 'wTools' );
     require( 'wFiles' );
     require( 'wConsequence' );
+    var resolve = require( 'resolve' );
   }
 
   //
@@ -14,10 +15,9 @@
   var _ = wTools;
   var Parent = null;
   var pathNativize = _.fileProvider.pathNativize;
-  var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
-  var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
-  var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
-  var resolve = require( 'resolve' );
+  // var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
+  // var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+  // var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
 
   var Self = function wRemoteRequireServer( o )
   {
@@ -212,8 +212,8 @@
 
       if( resolved && _.fileProvider.fileStat( resolved ) )
       {
-        if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
-        throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
+        //if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
+        //throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
 
         if( self.verbosity > 1 )
         console.log( 'resolved for : ', data.require );
@@ -266,7 +266,7 @@
     self.rootDir = _.pathDir( filePath );
 
     var o = { fileProvider :  _.fileProvider };
-    var recordOptions = _.FileRecordOptions( o, { dir : rootDir } );
+    var recordOptions = _.FileRecordOptions( o, { dir : self.rootDir } );
 
     var record = _.fileProvider.fileRecord( filePath, recordOptions );
     self.records[ record.absolute ] = record;
