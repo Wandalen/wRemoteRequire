@@ -212,8 +212,8 @@
 
       if( resolved && _.fileProvider.fileStat( resolved ) )
       {
-        if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
-        throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
+        //if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
+        //throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
 
         if( self.verbosity > 1 )
         console.log( 'resolved for : ', data.require );
