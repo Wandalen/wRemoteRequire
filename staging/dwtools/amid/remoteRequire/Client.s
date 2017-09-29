@@ -45,7 +45,7 @@
     var con = new wConsequence().give();
 
     if( self.verbosity >= 1 )
-    console.log( 'require : ', src, 'filePath : ', self.filePath, 'token: ', self.token );
+    console.log( 'require : ', src, '\nfrom : ', self.filePath, '\ntoken of parent: ', self.token, '\n' );
 
     var requestData =
     {
@@ -56,10 +56,17 @@
     var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
     var responseData = _.fileProvider.fileRead({ filePath : 'require', advanced : advanced });
     var response = JSON.parse( responseData );
+
     if( !response.fail )
     {
+      var file = RemoteRequire.files[ response.token ];
+
+      if( file )
+      var require = file.require;
+      else
       var require = RemoteRequire.requireMake( response );
-      con.doThen( () => require() );
+
+      con.doThen( () => { debugger;return require() } );
     }
 
     return con;
@@ -68,8 +75,24 @@
   function requireMake( o )
   {
     var self = this;
+
     var _require = _.routineJoin({ filePath : o.filePath, token : o.token }, self.require );
-    var require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require }, usingStrict : 0 });
+    var require;
+
+    if( self.counter < 1 )
+    {
+      // var routine = _.routineMake({ code : o.code, prependingReturn : 0, usingStrict : 0 });
+      var code = '__launcher__._beforeRun( require ).doThen( () => { debugger;var routine = wTools.routineMake({ code : code, prependingReturn : 0, externals : { require : require }, usingStrict : 0 }); routine(); })'
+      require = _.routineMake({ code : code, prependingReturn : 0, externals : { code : o.code, require : _require }, usingStrict : 0 });
+    }
+    else
+    {
+      require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require }, usingStrict : 0 });
+    }
+
+    self.counter += 1;
+    RemoteRequire.files[ o.token ] = { require : require };
+
     return require;
   }
 
@@ -90,6 +113,8 @@
 
   var Statics =
   {
+    files : {},
+    counter : 0
   }
 
   // --
