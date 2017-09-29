@@ -42,6 +42,8 @@
   {
     var self = this;
 
+    var con = new wConsequence().give();
+
     if( self.verbosity >= 1 )
     console.log( 'require : ', src, 'filePath : ', self.filePath, 'token: ', self.token );
 
@@ -57,16 +59,10 @@
     if( !response.fail )
     {
       var require = RemoteRequire.requireMake( response );
-      try
-      {
-        require();
-      }
-      catch( err )
-      {
-        _.errLog( err );
-      }
+      con.doThen( () => require() );
     }
 
+    return con;
   }
 
   function requireMake( o )
