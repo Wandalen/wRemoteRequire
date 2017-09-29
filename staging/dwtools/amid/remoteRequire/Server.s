@@ -260,6 +260,20 @@
   {
     var self = this;
 
+    if( self.records[ filePath ] )
+    {
+      var tokens = _.mapOwnKeys( self.files );
+      for( var i = 0; i < tokens.length; i++ )
+      {
+        var token = tokens[ i ];
+        var file = self.files[ token ];
+        if( file.filePath === self.records[ filePath ].absolute )
+        {
+          return { token : token, filePath : self.records[ filePath ].relative }
+        }
+      }
+    }
+
     var token = _.idGenerateDate();
 
     if( !self.rootDir )
@@ -274,6 +288,7 @@
     {
       filePath : record.absolute,
     }
+
     return { token : token, filePath : record.relative };
   }
 
