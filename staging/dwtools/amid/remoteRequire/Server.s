@@ -110,7 +110,7 @@
 
       app.post( '/require', function( req, res )
       {
-        self._resolve( req,res );
+        self._require( req,res );
       });
 
       self.server.listen( self.serverPort, function ()
@@ -123,9 +123,9 @@
     }
     else
     {
-      self.app.post( '/require', function( req, res )
+      self.app.post( [ '/require', '/local', '/resolve' ] , function( req, res )
       {
-        self._resolve( req,res );
+        self._require( req,res );
       });
     }
 
@@ -134,7 +134,7 @@
 
   //
 
-  function _resolve( req, res )
+  function _require( req, res )
   {
     var self = this;
 
@@ -153,9 +153,9 @@
 
       self.requests.push( data );
 
-      if( !_.objectIs( data ) || data.require === undefined )
+      if( !_.objectIs( data ) )
       {
-        res.send({ fail : 1 });
+        return res.send({ fail : 1 });
       }
 
       if( self.verbosity > 1 )
@@ -172,6 +172,9 @@
       }
       else
       {
+        if( req.originalUrl === '/local' )
+        baseDir = __dirname;
+        else
         baseDir = self.rootDir;
       }
 
@@ -194,7 +197,7 @@
       }
 
       if( !resolved )
-      resolved = _.pathResolve( _.pathJoin( baseDir, data.require ) );
+      resolved = _.pathResolve( _.pathJoin( baseDir, data.require || data.resolve ) );
 
       if( !_.fileProvider.fileStat( resolved ) )
       {
@@ -217,6 +220,9 @@
 
         if( self.verbosity > 1 )
         console.log( 'resolved for : ', data.require );
+
+        if( req.originalUrl === '/resolve' )
+        return res.send( JSON.stringify( { filePath : resolved } ) );
 
         var info = self.addFile( resolved );
         info.code = _.fileProvider.fileRead( resolved );
@@ -274,7 +280,7 @@
       }
     }
 
-    var token = _.idGenerateDate();
+    var token = _.idWithDate();
 
     if( !self.rootDir )
     self.rootDir = _.pathDir( filePath );
@@ -331,7 +337,7 @@
     start : start,
     stop : stop,
     _start : _start,
-    _resolve : _resolve,
+    _require : _require,
     _getPort : _getPort,
 
     addFile : addFile,
