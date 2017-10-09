@@ -42,7 +42,7 @@
   {
     var self = this;
 
-    var con = new wConsequence().give();
+    // var con = new wConsequence().give();
 
     if( self.verbosity >= 1 )
     console.log( 'require : ', src, '\nfrom : ', self.filePath, '\ntoken of parent: ', self.token, '\n' );
@@ -53,26 +53,33 @@
       require : src
     }
 
+    var endPoint = self.endPoint ? self.endPoint : 'require';
+
     var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
-    var responseData = _.fileProvider.fileRead({ filePath : 'require', advanced : advanced });
+    var responseData = _.fileProvider.fileRead({ filePath : endPoint, advanced : advanced });
     var response = JSON.parse( responseData );
 
     if( !response.fail )
     {
       var file = RemoteRequire.files[ response.token ];
+      var module = {  exports : {}, parent : self.token };
+      module.isBrowser = true;
 
       if( file )
-      var require = file.require;
+      return RemoteRequire.cache[ response.token ].exports;
       else
-      var require = RemoteRequire.requireMake( response );
+      {
+        RemoteRequire.cache[ response.token ] = module;
+        var require = RemoteRequire.requireMake( response, module );
+        require();
+        return module.exports;
+      }
 
-      con.doThen( () => { debugger;return require() } );
     }
 
-    return con;
   }
 
-  function requireMake( o )
+  function requireMake( o, module )
   {
     var self = this;
 
@@ -82,18 +89,48 @@
     if( self.counter < 1 )
     {
       // var routine = _.routineMake({ code : o.code, prependingReturn : 0, usingStrict : 0 });
-      var code = '__launcher__._beforeRun( require ).doThen( () => { debugger;var routine = wTools.routineMake({ code : code, prependingReturn : 0, externals : { require : require }, usingStrict : 0 }); routine(); })'
-      require = _.routineMake({ code : code, prependingReturn : 0, externals : { code : o.code, require : _require }, usingStrict : 0 });
+      var code = '__launcher__._beforeRun( require ).doThen( () => { debugger;var routine = wTools.routineMake({ code : code, prependingReturn : 0, externals : { require : require, module : module }, usingStrict : 0 }); routine(); })'
+      require = _.routineMake({ code : code, prependingReturn : 0, externals : { code : o.code, require : _require, module : module }, usingStrict : 0 });
     }
     else
     {
-      require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require }, usingStrict : 0 });
+      require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require,  module : module }, usingStrict : 0 });
     }
 
     self.counter += 1;
     RemoteRequire.files[ o.token ] = { require : require };
 
     return require;
+  }
+
+  //
+
+
+  function resolve( src, returnResponse )
+  {
+    var self = this;
+
+    var requestData =
+    {
+      resolve : src
+    }
+
+    var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
+    var responseData = _.fileProvider.fileRead({ filePath : 'resolve', advanced : advanced });
+    var response = JSON.parse( responseData );
+
+    if( returnResponse )
+    return response;
+
+    if( !response.fail )
+    {
+      return response.filePath;
+    }
+    else
+    {
+      throw response.err;
+    }
+
   }
 
   // --
@@ -114,6 +151,7 @@
   var Statics =
   {
     files : {},
+    cache : {},
     counter : 0
   }
 
@@ -128,6 +166,7 @@
 
     require : require,
     requireMake : requireMake,
+    resolve : resolve,
 
     // relationships
 
@@ -149,5 +188,4 @@
 
   _global_[ Self.name ] = wTools[ Self.nameShort ] = Self;
   _global_[ 'module' ] = { isBrowser : true };
-
 })();
