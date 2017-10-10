@@ -1,368 +1,445 @@
 ( function _RemoteRequireServer_s_() {
 
-  'use strict';
+'use strict';
 
-  if( typeof module !== 'undefined' )
+if( typeof module !== 'undefined' )
+{
+  require( 'wTools' );
+  require( 'wFiles' );
+  require( 'wConsequence' );
+
+  var resolve = require( 'resolve' );
+  var findRoot = require( 'find-root' );
+}
+
+//
+
+var _ = wTools;
+var Parent = null;
+var pathNativize = _.fileProvider.pathNativize;
+
+var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
+// var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
+var includeDir = _.pathJoin( modules, 'wTools/staging/dwtools/abase/layer2' );
+
+var Self = function wRemoteRequireServer( o )
+{
+  if( !( this instanceof Self ) )
+  if( o instanceof Self )
+  return o;
+  else
+  return new( _.routineJoin( Self, Self, arguments ) );
+  return Self.prototype.init.apply( this,arguments );
+}
+
+Self.nameShort = 'RemoteRequireServer';
+
+//
+
+function init( o )
+{
+  var self = this;
+
+  _.assert( arguments.length === 0 | arguments.length === 1 );
+
+  if( o )
+  self.copy( o )
+
+  if( !self.con )
+  self.con = new wConsequence().give();
+
+  if( !self.records )
+  self.records = {};
+
+  if( !self.requests )
+  self.requests = [];
+
+  if( !self.files )
+  self.files = {};
+
+  if( !self.tokensByFileName )
+  self.tokensByFileName = {};
+
+  if( !self.processed )
+  self.processed = {};
+
+  _.assert( self.rootDir, 'rootDir is required' );
+}
+
+//
+
+function start()
+{
+  var self = this;
+
+  process.on( 'SIGINT', function()
   {
-    require( 'wTools' );
-    require( 'wFiles' );
-    require( 'wConsequence' );
-    var resolve = require( 'resolve' );
-  }
-
-  //
-
-  var _ = wTools;
-  var Parent = null;
-  var pathNativize = _.fileProvider.pathNativize;
-  // var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
-  // var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
-  // var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
-
-  var Self = function wRemoteRequireServer( o )
-  {
-    if( !( this instanceof Self ) )
-    if( o instanceof Self )
-    return o;
-    else
-    return new( _.routineJoin( Self, Self, arguments ) );
-    return Self.prototype.init.apply( this,arguments );
-  }
-
-  Self.nameShort = 'RemoteRequireServer';
-
-  //
-
-  function init( o )
-  {
-    var self = this;
-
-    _.assert( arguments.length === 0 | arguments.length === 1 );
-
-    if( o )
-    self.copy( o )
-
-    if( !self.con )
-    self.con = new wConsequence().give();
-
-    if( !self.files )
-    self.files = {};
-    if( !self.records )
-    self.records = {};
-    if( !self.requests )
-    self.requests = [];
-
-    _.assert( self.rootDir, 'rootDir is required' );
-  }
-
-  //
-
-  function start()
-  {
-    var self = this;
-
-    process.on( 'SIGINT', function()
-    {
-      self.con
-      .doThen( () => self.stop() )
-      .doThen( () => process.exit() );
-    });
-
     self.con
-    .seal( self )
-    .ifNoErrorThen( self._getPort )
-    .ifNoErrorThen( self._start )
-
-    return self.con;
-  }
-
-  //
-
-  function stop()
-  {
-    var self = this;
-
-    var con = new wConsequence().give();
-
-    if( self.server && self.server.isRunning )
-    con.doThen( () => self.server.close() );
-
-    return con;
-  }
-
-  //
-
-  function _start()
-  {
-    var self = this;
-
-    if( !self.app )
-    {
-      _.assert( _.numberIs( self.serverPort ) );
-
-      var con = new wConsequence();
-      var express = require( 'express' );
-      var app = express();
-      self.server = require( 'http' ).createServer( app );
-
-      if( !self.resolve )
-      self.resolve = require( 'resolve' );
-
-      app.post( '/require', function( req, res )
-      {
-        self._require( req,res );
-      });
-
-      self.server.listen( self.serverPort, function ()
-      {
-        if( self.verbosity >= 3 )
-        logger.log( 'Server started:', 'http://127.0.0.1:'+ self.serverPort );
-        self.serverIsRunning = true;
-        con.give();
-      });
-    }
-    else
-    {
-      self.app.post( [ '/require', '/local', '/resolve' ] , function( req, res )
-      {
-        self._require( req,res );
-      });
-    }
-
-    return con;
-  }
-
-  //
-
-  function _require( req, res )
-  {
-    var self = this;
-
-    var data = '';
-    req.on( 'data', ( chunk ) => data += chunk.toString() )
-    req.on( 'end', () =>
-    {
-      try
-      {
-        data = JSON.parse( data );
-      }
-      catch( err )
-      {
-        _.errLog( err );
-      }
-
-      self.requests.push( data );
-
-      if( !_.objectIs( data ) )
-      {
-        return res.send({ fail : 1 });
-      }
-
-      if( self.verbosity > 1 )
-      console.log( 'data : ', data  )
-
-      var baseDir;
-      var filePath;
-
-      if( self.files[ data.token ] )
-      {
-        var pathByToken = self.files[ data.token ].filePath;
-        filePath = self.records[ pathByToken ].absolute;
-        baseDir = _.pathDir( filePath );
-      }
-      else
-      {
-        if( req.originalUrl === '/local' )
-        baseDir = __dirname;
-        else
-        baseDir = self.rootDir;
-      }
-
-      var resolved = null;
-
-      // if( _.strBegins( filePath, '/static' ) )
-      // {
-      //   filePath = _.pathJoin( statics, _.strRemoveBegin( filePath, '/static/' ) );
-      // }
-
-      // if( _.strBegins( filePath, '/modules' ) )
-      // {
-      //   filePath = _.pathJoin( modules, _.strRemoveBegin( filePath, '/modules/' ) );
-      // }
-
-      if( self.verbosity > 1 )
-      {
-        console.log( 'baseDir', baseDir );
-        console.log( 'filePath', filePath );
-      }
-
-      if( !resolved )
-      resolved = _.pathResolve( _.pathJoin( baseDir, data.require || data.resolve ) );
-
-      if( !_.fileProvider.fileStat( resolved ) )
-      {
-        resolved = null;
-
-        try
-        {
-          resolved = resolve.sync( data.require, { basedir: baseDir });
-        }
-        catch( err )
-        {
-          // _.errLog( err );
-        }
-      }
-
-      if( resolved && _.fileProvider.fileStat( resolved ) )
-      {
-        //if( _.pathCommon( [ self.rootDir, resolved ] ) !== self.rootDir )
-        //throw _.err( 'Required module path is out of rootDir path: ', self.rootDir );
-
-        if( self.verbosity > 1 )
-        console.log( 'resolved for : ', data.require );
-
-        if( req.originalUrl === '/resolve' )
-        return res.send( JSON.stringify( { filePath : resolved } ) );
-
-        var info = self.addFile( resolved );
-        info.code = _.fileProvider.fileRead( resolved );
-
-        res.send( JSON.stringify( info ) );
-      }
-      else
-      {
-        if( self.verbosity > 1 )
-        console.log( 'resolve failded for : ', data.require, baseDir );
-
-        res.send({ fail : 1 });
-      }
-    })
-  }
-
-  //
-
-  function _getPort()
-  {
-    var self = this;
-
-    if( self.serverPort )
-    var args = [ self.serverPort ];
-
-    var getPort = require( 'get-port' );
-
-    var con = wConsequence.from( getPort.apply( this, args ) );
-
-    con.doThen( ( err, port ) =>
-    {
-      self.serverPort = port
-    });
-
-    return con;
-  }
-
-  //
-
-  function addFile( filePath )
-  {
-    var self = this;
-
-    if( self.records[ filePath ] )
-    {
-      var tokens = _.mapOwnKeys( self.files );
-      for( var i = 0; i < tokens.length; i++ )
-      {
-        var token = tokens[ i ];
-        var file = self.files[ token ];
-        if( file.filePath === self.records[ filePath ].absolute )
-        {
-          return { token : token, filePath : self.records[ filePath ].relative }
-        }
-      }
-    }
-
-    var token = _.idWithDate();
-
-    if( !self.rootDir )
-    self.rootDir = _.pathDir( filePath );
-
-    var o = { fileProvider :  _.fileProvider };
-    var recordOptions = _.FileRecordOptions( o, { dir : self.rootDir } );
-
-    var record = _.fileProvider.fileRecord( filePath, recordOptions );
-    self.records[ record.absolute ] = record;
-    self.files[ token ] =
-    {
-      filePath : record.absolute,
-    }
-
-    return { token : token, filePath : record.relative };
-  }
-
-  // --
-  // relationship
-  // --
-
-  var Composes =
-  {
-    server : null,
-    app : null,
-    serverPort : null,
-    verbosity : 1,
-    rootDir : null,
-  }
-
-  var Restricts =
-  {
-    resolve : null,
-    serverIsRunning : false,
-    con : null,
-    files : null,
-    records : null,
-    requests : null
-  }
-
-  var Statics =
-  {
-  }
-
-  // --
-  // prototype
-  // --
-
-  var Proto =
-  {
-
-    init : init,
-
-    start : start,
-    stop : stop,
-    _start : _start,
-    _require : _require,
-    _getPort : _getPort,
-
-    addFile : addFile,
-
-    // relationships
-
-    Composes : Composes,
-    Restricts : Restricts,
-    Statics : Statics,
-  }
-
-  //
-
-  _.classMake
-  ({
-    cls : Self,
-    parent : Parent,
-    extend : Proto,
+    .doThen( () => self.stop() )
+    .doThen( () => process.exit() );
   });
 
-  wCopyable.mixin( Self );
+  self.con
+  .seal( self )
+  .ifNoErrorThen( self._portGet )
+  .ifNoErrorThen( self._start )
 
-  if( typeof module !== 'undefined' )
-  module[ 'exports' ] = Self;
+  return self.con;
+}
 
-  _global_[ Self.name ] = wTools[ Self.nameShort ] = Self;
+//
+
+function stop()
+{
+  var self = this;
+
+  var con = new wConsequence().give();
+
+  if( self.server && self.server.isRunning )
+  con.doThen( () => self.server.close() );
+
+  return con;
+}
+
+//
+
+function _start()
+{
+  var self = this;
+
+  if( !self.app )
+  {
+    _.assert( _.numberIs( self.serverPort ) );
+
+    var con = new wConsequence();
+    var express = require( 'express' );
+    var app = express();
+    self.server = require( 'http' ).createServer( app );
+
+    if( !self.resolve )
+    self.resolve = require( 'resolve' );
+
+    app.post( '/require', function( req, res )
+    {
+      self._require( req,res );
+    });
+
+    self.server.listen( self.serverPort, function ()
+    {
+      if( self.verbosity >= 3 )
+      logger.log( 'Server started:', 'http://127.0.0.1:'+ self.serverPort );
+      self.serverIsRunning = true;
+      con.give();
+    });
+  }
+  else
+  {
+    self.app.get( '/require', function( req, res )
+    {
+      self._require( req,res );
+    });
+
+    self.app.get( '/resolve', function( req, res )
+    {
+      self._resolve( req,res );
+    });
+
+    self.app.get( '/processed*', function( req, res )
+    {
+      self._processed( req,res );
+    });
+  }
+
+  return con;
+}
+
+//
+
+function _require( req, res )
+{
+  var self = this;
+
+  var filePathResolved;
+
+  if( req.query.token === "undefined" )
+  req.query.token = undefined;
+
+  try
+  {
+    var baseDir;
+
+    if( !req.query.local )
+    {
+      if( req.query.token )
+      if( self.files[ req.query.token ] )
+      {
+        var pathByToken = self.files[ req.query.token ].filePath;
+        var filePath = self.records[ pathByToken ].absolute;
+        baseDir = _.pathDir( filePath );
+      }
+
+      if( baseDir === undefined )
+      var baseDir = self.rootDir;
+    }
+    else
+    {
+      baseDir = __dirname;
+    }
+
+    filePathResolved = resolve.sync( req.query.package, { basedir: baseDir });
+
+    var packageRootDir = _.pathDir( findRoot( filePathResolved ) );
+    var filePathShort = _.strRemoveBegin( _.strRemoveBegin( filePathResolved, packageRootDir ), '/' );
+    var info = self.fileAdd( filePathResolved, filePathShort );
+
+    var file = self.fileComplement( filePathResolved, filePathShort, info, req.query.token )
+
+    self.processed[ info.token ] = file;
+
+    res.send( JSON.stringify( { code : file, token : info.token } ) );
+  }
+  catch( err )
+  {
+    if( self.verbosity >= 3 )
+    _.errLog( err );
+
+    res.send({ fail : 1 });
+  }
+}
+
+//
+
+function _resolve( req, res )
+{
+  var self = this;
+
+  var self = this;
+
+    var filePathResolved;
+
+    try
+    {
+      var baseDir;
+
+      if( req.query.fromInclude )
+      baseDir = includeDir;
+      else
+      baseDir = self.rootDir;
+
+      filePathResolved = resolve.sync( req.query.package, { basedir: baseDir });
+
+      res.send( JSON.stringify( { filePath : filePathResolved } ) );
+    }
+    catch( err )
+    {
+      if( self.verbosity >= 3 )
+      _.errLog( err );
+
+      res.send({ fail : 1 });
+    }
+
+}
+
+//
+
+function _processed( req, res )
+{
+  var self = this;
+
+  var filePathShort = _.strRemoveBegin( req.params[ 0 ], '/' );
+
+  var token = self.tokensByFileName[ filePathShort ];
+
+  if( token )
+  {
+    var file = self.processed[ token ];
+    res.send( file )
+  }
+  else
+  res.send( 'file not found' );
+}
+
+//
+
+function _portGet()
+{
+  var self = this;
+
+  if( self.serverPort )
+  return;
+
+  var args = [ self.serverPort ];
+
+  var getPort = require( 'get-port' );
+
+  var con = wConsequence.from( getPort.apply( this, args ) );
+
+  con.doThen( ( err, port ) =>
+  {
+    self.serverPort = port
+  });
+
+  return con;
+}
+
+//
+
+function fileAdd( filePath, filePathShort )
+{
+  var self = this;
+
+  if( self.records[ filePath ] )
+  {
+    var tokens = _.mapOwnKeys( self.files );
+    for( var i = 0; i < tokens.length; i++ )
+    {
+      var token = tokens[ i ];
+      var file = self.files[ token ];
+      if( file.filePath === self.records[ filePath ].absolute )
+      {
+        return { token : token, filePath : self.records[ filePath ].relative }
+      }
+    }
+  }
+
+  var token = _.idWithDate();
+
+  if( !self.rootDir )
+  self.rootDir = _.pathDir( filePath );
+
+  var o = { fileProvider :  _.fileProvider };
+  var recordOptions = _.FileRecordOptions( o, { dir : self.rootDir } );
+
+  var record = _.fileProvider.fileRecord( filePath, recordOptions );
+  self.records[ record.absolute ] = record;
+  self.files[ token ] =
+  {
+    filePath : record.absolute,
+  }
+
+  self.tokensByFileName[ filePathShort ] = token;
+
+  return { token : token, filePath : record.relative };
+}
+
+//
+
+function fileComplement( filePath, filePathShort, info, parent )
+{
+  var self = this;
+  var file = _.fileProvider.fileRead( filePath );
+
+  var sourceUrl = `//@ sourceURL=http://localhost:${self.serverPort}/processed/${filePathShort}\n`;
+  var _parent = parent ? `RemoteRequire.parents["${_parent}"]` : undefined;
+
+  var _module =
+  `var module =
+{
+  exports : RemoteRequire.exports["${info.token}"],
+  parent : ${_parent},
+  isBrowser : true
+};\n`;
+
+  var require =
+  `var require = wTools.routineJoin
+({
+  token : "${info.token}",
+  script : document.currentScript
+  },
+  RemoteRequire.require
+);\n`;
+
+  var fileName = _.pathName({ path : filePath, withExtension : 1 } );
+  var wrapperName  =  fileName.replace( /<|>| :|\.|"|'|\/|\\|\||\&|\?|\*|\n|\s/g, '_' )
+
+  var wrapper =
+  `${sourceUrl}
+
+( function ${wrapperName} () {
+
+debugger;
+${_module}
+${require}
+
+//
+
+${file}
+
+})();`
+
+  return wrapper;
+}
+
+// --
+// relationship
+// --
+
+var Composes =
+{
+  server : null,
+  app : null,
+  serverPort : null,
+  verbosity : 1,
+  rootDir : null,
+}
+
+var Restricts =
+{
+  resolve : null,
+  serverIsRunning : false,
+  con : null,
+  files : null,
+  records : null,
+  requests : null,
+  tokensByFileName : null
+}
+
+var Statics =
+{
+}
+
+// --
+// prototype
+// --
+
+var Proto =
+{
+
+  init : init,
+
+  start : start,
+  stop : stop,
+  _start : _start,
+  _require : _require,
+  _resolve : _resolve,
+  _portGet : _portGet,
+  _processed : _processed,
+
+  fileAdd : fileAdd,
+  fileComplement : fileComplement,
+
+  // relationships
+
+  Composes : Composes,
+  Restricts : Restricts,
+  Statics : Statics,
+}
+
+//
+
+_.classMake
+({
+  cls : Self,
+  parent : Parent,
+  extend : Proto,
+});
+
+wCopyable.mixin( Self );
+
+if( typeof module !== 'undefined' )
+module[ 'exports' ] = Self;
+
+_global_[ Self.name ] = wTools[ Self.nameShort ] = Self;
 
 })();
