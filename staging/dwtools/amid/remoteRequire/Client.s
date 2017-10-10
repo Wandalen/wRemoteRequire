@@ -42,95 +42,82 @@
   {
     var self = this;
 
-    // var con = new wConsequence().give();
+    // debugger
+    // console.log( "require:", src, "from token:", self.token );
 
-    if( self.verbosity >= 1 )
-    console.log( 'require : ', src, '\nfrom : ', self.filePath, '\ntoken of parent: ', self.token, '\n' );
+    var urlBase = 'require?package='+src;
+    var url;
 
-    var requestData =
+    if( self.local )
     {
-      token : self.token,
-      require : src
-    }
-
-    var endPoint = self.endPoint ? self.endPoint : 'require';
-
-    var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
-    var responseData = _.fileProvider.fileRead({ filePath : endPoint, advanced : advanced });
-    var response = JSON.parse( responseData );
-
-    if( !response.fail )
-    {
-      var file = RemoteRequire.files[ response.token ];
-      var module = {  exports : {}, parent : self.token };
-      module.isBrowser = true;
-
-      if( file )
-      return RemoteRequire.cache[ response.token ].exports;
-      else
-      {
-        RemoteRequire.cache[ response.token ] = module;
-        var require = RemoteRequire.requireMake( response, module );
-        require();
-        return module.exports;
-      }
-
-    }
-
-  }
-
-  function requireMake( o, module )
-  {
-    var self = this;
-
-    var _require = _.routineJoin({ filePath : o.filePath, token : o.token }, self.require );
-    var require;
-
-    if( self.counter < 1 )
-    {
-      // var routine = _.routineMake({ code : o.code, prependingReturn : 0, usingStrict : 0 });
-      var code = '__launcher__._beforeRun( require ).doThen( () => { debugger;var routine = wTools.routineMake({ code : code, prependingReturn : 0, externals : { require : require, module : module }, usingStrict : 0 }); routine(); })'
-      require = _.routineMake({ code : code, prependingReturn : 0, externals : { code : o.code, require : _require, module : module }, usingStrict : 0 });
+      url =  urlBase+'&local=1';
     }
     else
     {
-      require = _.routineMake({ code : o.code, prependingReturn : 0, externals : { require : _require,  module : module }, usingStrict : 0 });
+      url =  urlBase+'&token='+self.token;
     }
 
-    self.counter += 1;
-    RemoteRequire.files[ o.token ] = { require : require };
+    var advanced  = { method : 'GET' };
+    var responseData = _.fileProvider.fileRead({ filePath : url, advanced : advanced });
 
-    return require;
+    var data = JSON.parse( responseData );
+    if( data.fail )
+    return;
+
+    debugger
+    if( RemoteRequire.exports[ data.token ] )
+    {
+      return RemoteRequire.exports[ data.token ];
+    }
+
+    if( self.token )
+    {
+      if( !RemoteRequire.parents[ self.token ] )
+      RemoteRequire.parents[ self.token ] = [];
+
+      RemoteRequire.parents[ self.token ].push( data.token );
+    }
+
+    var exports = {};
+    RemoteRequire.exports[ data.token ] = exports;
+
+    var imported = document.createElement('script');
+    imported.type = "text/javascript";
+    imported.defer = true;
+    imported.async = false;
+    imported.appendChild( document.createTextNode( data.code ) )
+
+    if( self.script )
+    document.head.insertBefore( imported, self.script );
+    else
+    document.head.appendChild(imported);
+
+
+    return exports;
   }
 
   //
 
+  var requireLocal = _.routineJoin({ local : 1}, require );
 
-  function resolve( src, returnResponse )
+  //
+
+  function resolve( src )
   {
     var self = this;
 
-    var requestData =
-    {
-      resolve : src
-    }
+    debugger
 
-    var advanced  = { method : 'POST', send : JSON.stringify( requestData ) };
-    var responseData = _.fileProvider.fileRead({ filePath : 'resolve', advanced : advanced });
-    var response = JSON.parse( responseData );
+    var url = 'resolve?package='+src+'&fromInclude=1';
 
-    if( returnResponse )
-    return response;
+    var advanced  = { method : 'GET' };
+    var responseData = _.fileProvider.fileRead({ filePath : url, advanced : advanced });
 
-    if( !response.fail )
-    {
-      return response.filePath;
-    }
-    else
-    {
-      throw response.err;
-    }
+    var data = JSON.parse( responseData );
+    if( data.fail )
+    throw "Can't resolve " + src;
 
+    return data.filePath;
   }
 
   // --
@@ -150,9 +137,8 @@
 
   var Statics =
   {
-    files : {},
-    cache : {},
-    counter : 0
+    exports : {},
+    parents : {}
   }
 
   // --
@@ -165,8 +151,9 @@
     init : init,
 
     require : require,
-    requireMake : requireMake,
     resolve : resolve,
+
+    requireLocal : requireLocal,
 
     // relationships
 

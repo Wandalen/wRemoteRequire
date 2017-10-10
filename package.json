@@ -37,7 +37,8 @@
     "wFiles": "",
     "express": "",
     "get-port": "",
-    "resolve": ""
+    "resolve": "",
+    "find-root": ""
   },
   "devDependencies": {
     "wTesting": "",
