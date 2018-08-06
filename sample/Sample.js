@@ -11,15 +11,15 @@ var remoteRequire = new wRemoteRequireServer
 });
 remoteRequire.start();
 
-var modules = _.pathJoin( _.pathResolve( __dirname, '../' ), 'node_modules' );
-var staging = _.pathJoin( _.pathResolve( __dirname, '../' ), 'staging' );
+var modules = _.join( _.resolve( __dirname, '../' ), 'node_modules' );
+var staging = _.join( _.resolve( __dirname, '../' ), 'staging' );
 
 app.use( '/modules', express.static( modules ));
 app.use( '/staging', express.static( staging ));
 
 app.get( '/', function ( req, res )
 {
-  res.sendFile( _.pathJoin( __dirname, 'Sample.html' ) );
+  res.sendFile( _.join( __dirname, 'Sample.html' ) );
 });
 
 server.listen( 8080, function ()

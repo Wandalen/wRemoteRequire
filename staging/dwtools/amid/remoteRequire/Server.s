@@ -16,12 +16,12 @@ if( typeof module !== 'undefined' )
 
 var _ = wTools;
 var Parent = null;
-var pathNativize = _.fileProvider.pathNativize;
+var nativize = _.fileProvider.nativize;
 
-var rootDir = pathNativize( _.pathResolve( __dirname, '../../..' ) );
-// var statics = pathNativize( _.pathJoin( rootDir, 'staging/dwtools/amid/launcher/static' ) );
-var modules = pathNativize( _.pathJoin( rootDir, 'node_modules' ) );
-var includeDir = _.pathJoin( modules, 'wTools/staging/dwtools/abase/layer2' );
+var rootDir = nativize( _.resolve( __dirname, '../../..' ) );
+// var statics = nativize( _.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+var modules = nativize( _.join( rootDir, 'node_modules' ) );
+var includeDir = _.join( modules, 'wTools/staging/dwtools/abase/layer2' );
 
 var Self = function wRemoteRequireServer( o )
 {
@@ -174,9 +174,9 @@ function _require( req, res )
       if( req.query.token )
       if( self.files[ req.query.token ] )
       {
-        var pathByToken = self.files[ req.query.token ].filePath;
-        var filePath = self.records[ pathByToken ].absolute;
-        baseDir = _.pathDir( filePath );
+        var byToken = self.files[ req.query.token ].filePath;
+        var filePath = self.records[ byToken ].absolute;
+        baseDir = _.dir( filePath );
       }
 
       if( baseDir === undefined )
@@ -189,7 +189,7 @@ function _require( req, res )
 
     filePathResolved = resolve.sync( req.query.package, { basedir: baseDir });
 
-    var packageRootDir = _.pathDir( findRoot( filePathResolved ) );
+    var packageRootDir = _.dir( findRoot( filePathResolved ) );
     var filePathShort = _.strRemoveBegin( _.strRemoveBegin( filePathResolved, packageRootDir ), '/' );
     var info = self.fileAdd( filePathResolved, filePathShort );
 
@@ -306,7 +306,7 @@ function fileAdd( filePath, filePathShort )
   var token = _.idWithDate();
 
   if( !self.rootDir )
-  self.rootDir = _.pathDir( filePath );
+  self.rootDir = _.dir( filePath );
 
   var o = { fileProvider :  _.fileProvider };
   var recordOptions = _.FileRecordOptions( o, { dir : self.rootDir } );
@@ -350,7 +350,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   RemoteRequire.require
 );\n`;
 
-  var fileName = _.pathName({ path : filePath, withExtension : 1 } );
+  var fileName = _.name({ path : filePath, withExtension : 1 } );
   var wrapperName  =  fileName.replace( /<|>| :|\.|"|'|\/|\\|\||\&|\?|\*|\n|\s/g, '_' )
 
   var wrapper =
