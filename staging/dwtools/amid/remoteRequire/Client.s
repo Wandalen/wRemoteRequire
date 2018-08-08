@@ -32,7 +32,7 @@
     if( !self.remoteAdress )
     self.remoteAdress = 'http://localhost:3333';
 
-    self._requestUrl = _.urlJoin( self.remoteAdress, 'require' );
+    self._requestUrl = _.uri.uriJoin( self.remoteAdress, 'require' );
 
   }
 
@@ -41,11 +41,12 @@
   function require( src )
   {
     var self = this;
+    let remoteRequireExports = RemoteRequire.exports.value;
 
     // debugger
     // console.log( "require:", src, "from token:", self.token );
 
-    var urlBase = 'require?package='+src;
+    var urlBase = _.uri.uriJoin( window.location.href,'require?package='+src );
     var url;
 
     if( self.local )
@@ -62,24 +63,28 @@
 
     var data = JSON.parse( responseData );
     if( data.fail )
-    return;
-
-    debugger
-    if( RemoteRequire.exports[ data.token ] )
     {
-      return RemoteRequire.exports[ data.token ];
+      throw _.err( 'Can not require: ', src )
+      return;
+    }
+
+    // debugger
+    if( remoteRequireExports[ data.token ] )
+    {
+      return remoteRequireExports[ data.token ];
     }
 
     if( self.token )
     {
-      if( !RemoteRequire.parents[ self.token ] )
-      RemoteRequire.parents[ self.token ] = [];
+      if( !RemoteRequire.parents.value[ self.token ] )
+      RemoteRequire.parents.value[ self.token ] = [];
 
-      RemoteRequire.parents[ self.token ].push( data.token );
+      RemoteRequire.parents.value[ self.token ].push( data.token );
     }
 
+    debugger
     var exports = {};
-    RemoteRequire.exports[ data.token ] = exports;
+    remoteRequireExports[ data.token ] = exports;
 
     var imported = document.createElement('script');
     imported.type = "text/javascript";
@@ -106,9 +111,9 @@
   {
     var self = this;
 
-    debugger
+    // debugger
 
-    var url = 'resolve?package='+src+'&fromInclude=1';
+    var url = _.uri.uriJoin( window.location.href, 'resolve?package='+src+'&fromInclude=1' );
 
     var advanced  = { method : 'GET' };
     var responseData = _.fileProvider.fileRead({ filePath : url, advanced : advanced });
@@ -137,8 +142,8 @@
 
   var Statics =
   {
-    exports : {},
-    parents : {}
+    exports : _.define.own( {} ),
+    parents : _.define.own( {} )
   }
 
   // --
@@ -164,7 +169,7 @@
 
   //
 
-  _.classMake
+  _.classDeclare
   ({
     cls : Self,
     parent : Parent,

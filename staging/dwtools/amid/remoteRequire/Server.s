@@ -4,12 +4,41 @@
 
 if( typeof module !== 'undefined' )
 {
-  require( 'wTools' );
-  require( 'wFiles' );
-  require( 'wConsequence' );
+
+  if( typeof _global_ === 'undefined' || !_global_.wBase )
+  {
+    let toolsPath = '../../../dwtools/Base.s';
+    let toolsExternal = 0;
+    try
+    {
+      toolsPath = require.resolve( toolsPath );
+    }
+    catch( err )
+    {
+      toolsExternal = 1;
+      require( 'wTools' );
+    }
+    if( !toolsExternal )
+    require( toolsPath );
+  }
+
+  if( !_global_.wTools.nameFielded )
+  try
+  {
+    require( './NameTools.s' );
+  }
+  catch( err )
+  {
+  }
+
+  var _ = _global_.wTools;
+
+  _.include( 'wFiles' );
+  _.include( 'wConsequence' );
 
   var resolve = require( 'resolve' );
   var findRoot = require( 'find-root' );
+
 }
 
 //
@@ -165,6 +194,8 @@ function _require( req, res )
   if( req.query.token === "undefined" )
   req.query.token = undefined;
 
+  debugger
+
   try
   {
     var baseDir;
@@ -176,7 +207,7 @@ function _require( req, res )
       {
         var byToken = self.files[ req.query.token ].filePath;
         var filePath = self.records[ byToken ].absolute;
-        baseDir = _.dir( filePath );
+        baseDir = _.path.dir( filePath );
       }
 
       if( baseDir === undefined )
@@ -187,9 +218,14 @@ function _require( req, res )
       baseDir = __dirname;
     }
 
-    filePathResolved = resolve.sync( req.query.package, { basedir: baseDir });
+    filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.nativize( baseDir ) });
 
-    var packageRootDir = _.dir( findRoot( filePathResolved ) );
+
+    var packageRootDir = _.path.dir( findRoot( filePathResolved ) );
+
+    //normalize resolved
+    filePathResolved = _.path.normalize( filePathResolved );
+
     var filePathShort = _.strRemoveBegin( _.strRemoveBegin( filePathResolved, packageRootDir ), '/' );
     var info = self.fileAdd( filePathResolved, filePathShort );
 
@@ -201,7 +237,7 @@ function _require( req, res )
   }
   catch( err )
   {
-    if( self.verbosity >= 3 )
+    // if( self.verbosity >= 3 )
     _.errLog( err );
 
     res.send({ fail : 1 });
@@ -306,10 +342,13 @@ function fileAdd( filePath, filePathShort )
   var token = _.idWithDate();
 
   if( !self.rootDir )
-  self.rootDir = _.dir( filePath );
+  self.rootDir = _.path.dir( filePath );
 
+  debugger
   var o = { fileProvider :  _.fileProvider };
-  var recordOptions = _.FileRecordOptions( o, { dir : self.rootDir } );
+  var f = _.FileRecordFilter( o );
+  f.form();
+  var recordOptions = _.FileRecordContext( o, { filter : f, dir : self.rootDir } );
 
   var record = _.fileProvider.fileRecord( filePath, recordOptions );
   self.records[ record.absolute ] = record;
@@ -336,7 +375,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   var _module =
   `var module =
 {
-  exports : RemoteRequire.exports["${info.token}"],
+  exports : RemoteRequire.exports.value["${info.token}"],
   parent : ${_parent},
   isBrowser : true
 };\n`;
@@ -350,7 +389,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   RemoteRequire.require
 );\n`;
 
-  var fileName = _.name({ path : filePath, withExtension : 1 } );
+  var fileName = _.path.name({ path : filePath, withExtension : 1 } );
   var wrapperName  =  fileName.replace( /<|>| :|\.|"|'|\/|\\|\||\&|\?|\*|\n|\s/g, '_' )
 
   var wrapper =
