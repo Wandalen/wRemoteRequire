@@ -233,7 +233,7 @@ function _require( req, res )
 
     self.processed[ info.token ] = file;
 
-    res.send( JSON.stringify( { code : file, token : info.token } ) );
+    res.send( JSON.stringify( { code : file, token : info.token, filePath : filePathResolved } ) );
   }
   catch( err )
   {
@@ -370,7 +370,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   var file = _.fileProvider.fileRead( filePath );
 
   var sourceUrl = `//@ sourceURL=http://localhost:${self.serverPort}/processed/${filePathShort}\n`;
-  var _parent = parent ? `RemoteRequire.parents["${_parent}"]` : undefined;
+  var _parent = parent ? `RemoteRequire.parents.value["${parent}"]` : undefined;
 
   var _module =
   `var module =
@@ -392,7 +392,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   var fileName = _.path.name({ path : filePath, withExtension : 1 } );
   var wrapperName  =  fileName.replace( /<|>| :|\.|"|'|\/|\\|\||\&|\?|\*|\n|\s/g, '_' )
 
-  var wrapper =
+  /* var wrapper =
   `${sourceUrl}
 
 ( function ${wrapperName} () {
@@ -405,8 +405,25 @@ ${require}
 
 ${file}
 
-})();`
+})();` */
 
+/* var wrapper =
+  `${sourceUrl}
+
+( function ${wrapperName} () {
+  debugger;
+
+//
+
+${file}
+
+})();` */
+
+var wrapper =
+`${sourceUrl}
+debugger;
+${file}
+`
   return wrapper;
 }
 

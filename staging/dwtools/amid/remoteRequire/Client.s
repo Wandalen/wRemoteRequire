@@ -41,9 +41,7 @@
   function require( src )
   {
     var self = this;
-    let remoteRequireExports = RemoteRequire.exports.value;
 
-    // debugger
     // console.log( "require:", src, "from token:", self.token );
 
     var urlBase = _.uri.uriJoin( window.location.href,'require?package='+src );
@@ -69,9 +67,9 @@
     }
 
     // debugger
-    if( remoteRequireExports[ data.token ] )
+    if( RemoteRequire.exports.value[ data.token ] )
     {
-      return remoteRequireExports[ data.token ];
+      return RemoteRequire.exports.value[ data.token ];
     }
 
     if( self.token )
@@ -82,12 +80,14 @@
       RemoteRequire.parents.value[ self.token ].push( data.token );
     }
 
-    debugger
     var exports = {};
-    remoteRequireExports[ data.token ] = exports;
+    RemoteRequire.exports.value[ data.token ] = exports;
 
     var imported = document.createElement('script');
     imported.type = "text/javascript";
+    imported.token = data.token;
+    imported.tokenParent = self.token;
+    imported.filePath = data.filePath;
     imported.defer = true;
     imported.async = false;
     imported.appendChild( document.createTextNode( data.code ) )
@@ -125,6 +125,47 @@
     return data.filePath;
   }
 
+  //
+
+  function _setup()
+  {
+    function _moduleGet()
+    {
+      var self = document.currentScript;
+
+      if( !self.module )
+      self.module =
+      {
+        exports : RemoteRequire.exports.value[ self.token ],
+        parent : RemoteRequire.parents.value[ self.tokenParent ],
+        isBrowser : true
+      };
+
+      return self.module;
+    }
+
+    function _requireGet()
+    {
+      let self = document.currentScript;
+
+      if( !self.require )
+      self.require = _.routineJoin
+      ({
+        token : self.token,
+        script : self
+        },
+        require
+      );
+
+      return self.require;
+    }
+
+    Object.defineProperty( _global_, 'module', { get: _moduleGet } );
+    Object.defineProperty( _global_, 'require', { get: _requireGet } );
+  }
+
+  //
+
   // --
   // relationship
   // --
@@ -143,7 +184,8 @@
   var Statics =
   {
     exports : _.define.own( {} ),
-    parents : _.define.own( {} )
+    parents : _.define.own( {} ),
+    setup : _setup
   }
 
   // --
@@ -179,5 +221,7 @@
   wCopyable.mixin( Self );
 
   _global_[ Self.name ] = wTools[ Self.nameShort ] = Self;
-  _global_[ 'module' ] = { isBrowser : true };
+  // debugger
+  Self.setup();
+  // _global_[ 'module' ] = { isBrowser : true };
 })();
