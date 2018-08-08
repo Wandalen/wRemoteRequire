@@ -18,10 +18,10 @@ var _ = wTools;
 var Parent = null;
 var nativize = _.fileProvider.nativize;
 
-var rootDir = nativize( _.resolve( __dirname, '../../..' ) );
-// var statics = nativize( _.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
-var modules = nativize( _.join( rootDir, 'node_modules' ) );
-var includeDir = _.join( modules, 'wTools/staging/dwtools/abase/layer2' );
+var rootDir = nativize( _.path.resolve( __dirname, '../../..' ) );
+// var statics = nativize( _.path.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+var modules = nativize( _.path.join( rootDir, 'node_modules' ) );
+var includeDir = _.path.join( modules, 'wTools/staging/dwtools/abase/layer2' );
 
 var Self = function wRemoteRequireServer( o )
 {
@@ -81,9 +81,9 @@ function start()
   });
 
   self.con
-  .seal( self )
-  .ifNoErrorThen( self._portGet )
-  .ifNoErrorThen( self._start )
+  // .seal( self )
+  .ifNoErrorThen( _.routineSeal( self, self._portGet ) )
+  .ifNoErrorThen( _.routineSeal( self, self._start ) )
 
   return self.con;
 }
@@ -428,7 +428,7 @@ var Proto =
 
 //
 
-_.classMake
+_.classDeclare
 ({
   cls : Self,
   parent : Parent,
