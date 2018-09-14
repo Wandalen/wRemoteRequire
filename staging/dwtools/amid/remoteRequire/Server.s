@@ -45,7 +45,7 @@ if( typeof module !== 'undefined' )
 
 var _ = wTools;
 var Parent = null;
-var nativize = _.fileProvider.nativize;
+var nativize = _.fileProvider.pathNativize;
 
 var rootDir = nativize( _.path.resolve( __dirname, '../../..' ) );
 // var statics = nativize( _.path.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
@@ -218,8 +218,7 @@ function _require( req, res )
       baseDir = __dirname;
     }
 
-    filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.nativize( baseDir ) });
-
+    filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.pathNativize( baseDir ) });
 
     var packageRootDir = _.path.dir( findRoot( filePathResolved ) );
 
@@ -237,7 +236,7 @@ function _require( req, res )
   }
   catch( err )
   {
-    // if( self.verbosity >= 3 )
+    if( self.verbosity >= 3 )
     _.errLog( err );
 
     res.send({ fail : 1 });
@@ -421,7 +420,7 @@ ${file}
 
 var wrapper =
 `${sourceUrl}
-debugger;
+//debugger;
 ${file}
 `
   return wrapper;
