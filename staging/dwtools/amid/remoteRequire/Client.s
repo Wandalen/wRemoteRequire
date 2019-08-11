@@ -66,7 +66,6 @@
     if( data.fail )
     {
       throw new Error( 'Can not require: ' + src )
-      return;
     }
 
     // debugger
@@ -83,8 +82,7 @@
       wRemoteRequire.parents[ self.token ].push( data.token );
     }
 
-    var exports = {};
-    wRemoteRequire.exports[ data.token ] = exports;
+    wRemoteRequire.exports[ data.token ] = {};
 
     var imported = document.createElement('script');
     imported.type = "text/javascript";
@@ -101,7 +99,7 @@
     document.head.appendChild(imported);
 
 
-    return exports;
+    return wRemoteRequire.exports[ data.token ];
   }
 
   //
@@ -138,14 +136,28 @@
     {
       var self = document.currentScript;
 
-      if( !self.module )
+      if( self.module )
+      return self.module;
+      
       self.module =
       {
-        exports : Self.exports[ self.token ],
+        // exports : Self.exports[ self.token ],
         parent : Self.parents[ self.tokenParent ],
         isBrowser : true
       };
+      
+      function exportsGet()
+      {
+        return Self.exports[ self.token ];
+      }
+      
+      function exportsSet( src )
+      { 
+        Self.exports[ self.token ] = src;
+      }
 
+      Object.defineProperty( self.module, 'exports', { set : exportsSet, get: exportsGet });
+      
       return self.module;
     }
 
