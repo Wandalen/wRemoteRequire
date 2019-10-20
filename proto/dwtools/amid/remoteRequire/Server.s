@@ -5,24 +5,9 @@
 if( typeof module !== 'undefined' )
 {
 
-  if( typeof _global_ === 'undefined' || !_global_.wBase )
-  {
-    let toolsPath = '../../../dwtools/Base.s';
-    let toolsExternal = 0;
-    try
-    {
-      toolsPath = require.resolve( toolsPath );
-    }
-    catch( err )
-    {
-      toolsExternal = 1;
-      require( 'wTools' );
-    }
-    if( !toolsExternal )
-    require( toolsPath );
-  }
+  var _ = require( '../../Tools.s' );
 
-  if( !_global_.wTools.nameFielded )
+  if( !_.nameFielded )
   try
   {
     require( './NameTools.s' );
@@ -30,8 +15,6 @@ if( typeof module !== 'undefined' )
   catch( err )
   {
   }
-
-  var _ = _global_.wTools;
 
   _.include( 'wFiles' );
   _.include( 'wConsequence' );
@@ -45,11 +28,10 @@ if( typeof module !== 'undefined' )
 
 var _ = wTools;
 var Parent = null;
-var nativize = _.fileProvider.nativize;
 
-var rootDir = nativize( _.path.resolve( __dirname, '../../..' ) );
-// var statics = nativize( _.path.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
-var modules = nativize( _.path.join( rootDir, 'node_modules' ) );
+var rootDir = _.fileProvider.path.nativize( _.path.resolve( __dirname, '../../..' ) );
+// var statics = _.fileProvider.path.nativize( _.path.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+var modules = _.fileProvider.path.nativize( _.path.join( rootDir, 'node_modules' ) );
 var includeDir = _.path.join( modules, 'wTools/staging/dwtools/abase/layer2' );
 
 var Self = function wRemoteRequireServer( o )
@@ -76,7 +58,7 @@ function init( o )
   self.copy( o )
 
   if( !self.con )
-  self.con = new wConsequence().give();
+  self.con = new _.Consequence().take( null );
 
   if( !self.records )
   self.records = {};
@@ -105,8 +87,8 @@ function start()
   process.on( 'SIGINT', function()
   {
     self.con
-    .doThen( () => self.stop() )
-    .doThen( () => process.exit() );
+    .then( () => self.stop() )
+    .then( () => process.exit() );
   });
 
   self.con
@@ -123,10 +105,10 @@ function stop()
 {
   var self = this;
 
-  var con = new wConsequence().give();
+  var con = new _.Consequence().take( null );
 
   if( self.server && self.server.isRunning )
-  con.doThen( () => self.server.close() );
+  con.then( () => self.server.close() );
 
   return con;
 }
@@ -141,7 +123,7 @@ function _start()
   {
     _.assert( _.numberIs( self.serverPort ) );
 
-    var con = new wConsequence();
+    var con = new _.Consequence();
     var express = require( 'express' );
     var app = express();
     self.server = require( 'http' ).createServer( app );
@@ -159,8 +141,10 @@ function _start()
       if( self.verbosity >= 3 )
       logger.log( 'Server started:', 'http://127.0.0.1:'+ self.serverPort );
       self.serverIsRunning = true;
-      con.give();
+      con.take( null );
     });
+    
+    return con;
   }
   else
   {
@@ -178,9 +162,10 @@ function _start()
     {
       self._processed( req,res );
     });
+    
+    return true;
   }
 
-  return con;
 }
 
 //
@@ -217,9 +202,10 @@ function _require( req, res )
     {
       baseDir = __dirname;
     }
-
-    filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.nativize( baseDir ) });
-
+    
+    debugger
+    
+    filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.path.nativize( baseDir ) });
 
     var packageRootDir = _.path.dir( findRoot( filePathResolved ) );
 
@@ -237,7 +223,7 @@ function _require( req, res )
   }
   catch( err )
   {
-    // if( self.verbosity >= 3 )
+    if( self.verbosity >= 3 )
     _.errLog( err );
 
     res.send({ fail : 1 });
@@ -303,17 +289,18 @@ function _portGet()
   var self = this;
 
   if( self.serverPort )
-  return;
+  return self.serverPort;
 
   var args = [ self.serverPort ];
 
   var getPort = require( 'get-port' );
 
-  var con = wConsequence.from( getPort.apply( this, args ) );
+  var con = _.Consequence.From( getPort.apply( this, args ) );
 
-  con.doThen( ( err, port ) =>
+  con.finally( ( err, port ) =>
   {
     self.serverPort = port
+    return null;
   });
 
   return con;
@@ -345,12 +332,10 @@ function fileAdd( filePath, filePathShort )
   self.rootDir = _.path.dir( filePath );
 
   debugger
-  var o = { fileProvider :  _.fileProvider };
-  var f = _.FileRecordFilter( o );
-  f.form();
-  var recordOptions = _.FileRecordContext( o, { filter : f, dir : self.rootDir } );
-
-  var record = _.fileProvider.fileRecord( filePath, recordOptions );
+  var o = { defaultFileProvider :  _.fileProvider, filter : null, dirPath : self.rootDir };
+  var factory = _.FileRecordFactory.TollerantFrom( o ).form();
+  var record = factory.record({ input : filePath, factory : factory })
+  // var record = _.fileProvider.fileRecord( filePath, recordOptions );
   self.records[ record.absolute ] = record;
   self.files[ token ] =
   {
@@ -389,7 +374,7 @@ function fileComplement( filePath, filePathShort, info, parent )
   RemoteRequire.require
 );\n`;
 
-  var fileName = _.path.name({ path : filePath, withExtension : 1 } );
+  var fileName = _.path.name({ path : filePath, full : 1 } );
   var wrapperName  =  fileName.replace( /<|>| :|\.|"|'|\/|\\|\||\&|\?|\*|\n|\s/g, '_' )
 
   /* var wrapper =
@@ -421,7 +406,7 @@ ${file}
 
 var wrapper =
 `${sourceUrl}
-debugger;
+//debugger;
 ${file}
 `
   return wrapper;
