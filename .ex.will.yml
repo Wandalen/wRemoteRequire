@@ -24,7 +24,7 @@ about :
 path :
 
   repository : git+https:///github.com/Wandalen/wRemoteRequire.git
-  remotes :
+  origins :
    - git+https:///github.com/Wandalen/wRemoteRequire.git
    - npm:///wremoterequire
   bugtracker : https:///github.com/Wandalen/wRemoteRequire/issues
