@@ -5,9 +5,9 @@
   //
 
   var _global_ = window;
-  var Self = function wRemoteRequireClient( o )
+  let Self = function wRemoteRequireClient( o )
   {
-    return Self.prototype.init.apply( this,arguments );
+    return _.workpiece.construct( Self, this, arguments );
   }
 
   //
@@ -138,26 +138,26 @@
 
       if( self.module )
       return self.module;
-      
+
       self.module =
       {
         // exports : Self.exports[ self.token ],
         parent : Self.parents[ self.tokenParent ],
         isBrowser : true
       };
-      
+
       function exportsGet()
       {
         return Self.exports[ self.token ];
       }
-      
+
       function exportsSet( src )
-      { 
+      {
         Self.exports[ self.token ] = src;
       }
 
       Object.defineProperty( self.module, 'exports', { set : exportsSet, get: exportsGet });
-      
+
       return self.module;
     }
 

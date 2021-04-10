@@ -5,7 +5,7 @@
 if( typeof module !== 'undefined' )
 {
 
-  var _ = require( '../../Tools.s' );
+  let _ = require( '../../Tools.s' );
 
   if( !_.nameFielded )
   try
@@ -26,22 +26,17 @@ if( typeof module !== 'undefined' )
 
 //
 
-var _ = wTools;
-var Parent = null;
+let _ = wTools;
+let Parent = null;
 
 var rootDir = _.fileProvider.path.nativize( _.path.resolve( __dirname, '../../..' ) );
-// var statics = _.fileProvider.path.nativize( _.path.join( rootDir, 'staging/dwtools/amid/launcher/static' ) );
+// var statics = _.fileProvider.path.nativize( _.path.join( rootDir, 'staging/wtools/amid/launcher/static' ) );
 var modules = _.fileProvider.path.nativize( _.path.join( rootDir, 'node_modules' ) );
-var includeDir = _.path.join( modules, 'wTools/staging/dwtools/abase/layer2' );
+var includeDir = _.path.join( modules, 'wTools/staging/wtools/abase/layer2' );
 
-var Self = function wRemoteRequireServer( o )
+let Self = function wRemoteRequireServer( o )
 {
-  if( !( this instanceof Self ) )
-  if( o instanceof Self )
-  return o;
-  else
-  return new( _.routineJoin( Self, Self, arguments ) );
-  return Self.prototype.init.apply( this,arguments );
+  return _.workpiece.construct( Self, this, arguments );
 }
 
 Self.nameShort = 'RemoteRequireServer';
@@ -143,7 +138,7 @@ function _start()
       self.serverIsRunning = true;
       con.take( null );
     });
-    
+
     return con;
   }
   else
@@ -162,7 +157,7 @@ function _start()
     {
       self._processed( req,res );
     });
-    
+
     return true;
   }
 
@@ -202,9 +197,9 @@ function _require( req, res )
     {
       baseDir = __dirname;
     }
-    
+
     debugger
-    
+
     filePathResolved = resolve.sync( req.query.package, { basedir: _.fileProvider.path.nativize( baseDir ) });
 
     var packageRootDir = _.path.dir( findRoot( filePathResolved ) );

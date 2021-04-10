@@ -3,11 +3,11 @@
   "version": "0.3.13",
   "enabled": 0,
   "description": " ",
-  "author": "Kostiantyn Wandalen <wanalen@willbe.so>",
+  "author": "Kostiantyn Wandalen <wanalen@01.school>",
   "contributors": [
     {
       "name": "Kostiantyn Wandalen",
-      "email": "wanalen@willbe.so"
+      "email": "wanalen@01.school"
     },
     {
       "name": "Volodymyr M.",
@@ -15,10 +15,10 @@
     }
   ],
   "license": "MIT",
-  "main": "proto/dwtools/amid/remoteRequire/Server.s",
+  "main": "proto/wtools/amid/remoteRequire/Server.s",
   "files": [
-    "proto/dwtools/amid",
-    "proto/dwtools/Tools.s", "out"
+    "proto/wtools/amid",
+    "proto/node_modules/Tools", "out"
   ],
   "scripts": {
     "test": "wtest staging",

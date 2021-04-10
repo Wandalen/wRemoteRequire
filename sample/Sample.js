@@ -1,5 +1,5 @@
 require( 'wremoterequire' );
-var _ = wTools;
+let _ = wTools;
 var express = require( 'express' );
 var app = express();
 var server = require( 'http' ).createServer( app );

@@ -40,7 +40,11 @@ path :
 
   in : '.'
   out : 'out'
-  temp : 'path::out'
+  temp :
+    - 'path::out'
+    - 'package-lock.json'
+    - 'package.json'
+    - 'node_modules'
   proto : './staging'
   export : '{path::proto}/**'
   doc : './doc'
@@ -71,7 +75,7 @@ path :
       content : prime
 
   entry.proto.no.tests :
-    path : staging/dwtools/amid/remoteRequire/Server.s
+    path : staging/wtools/amid/remoteRequire/Server.s
     criterion :
       tests : 'no.tests'
   entry.proto.only.tests :
@@ -79,11 +83,11 @@ path :
     criterion :
       tests : 'only.tests'
 
-  # npm.entry : proto/dwtools/abase/Layer2.s
+  # npm.entry : proto/wtools/abase/Layer2.s
   # npm.files : proto
 
   entry.out.raw.debug :
-    path : '{path::out.*=1}/source/dwtools/amid/remoteRequire/Server.s'
+    path : '{path::out.*=1}/source/wtools/amid/remoteRequire/Server.s'
     criterion :
       debug : [ debug, release ]
       raw : raw
